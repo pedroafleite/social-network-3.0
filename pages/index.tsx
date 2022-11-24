@@ -1,71 +1,69 @@
-/* pages/profile/[handle].js */
-import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
-import { client, getPublications, getProfiles } from "../api";
+/* pages/index.js */
+import { useEffect, useState } from "react";
+import { client, exploreProfiles } from "../api";
+import Link from "next/link";
 
-export default function Profile() {
-  /* create initial state to hold user profile and array of publications */
-  const [profile, setProfile] = useState();
-  const [publications, setPublications] = useState([]);
-  /* using the router we can get the lens handle from the route param */
-  const router = useRouter();
-  const { handle } = router.query;
-
+export default function Home() {
+  /* create initial state to hold array of profiles */
+  const [profiles, setProfiles] = useState([]);
   useEffect(() => {
-    if (handle) {
-      fetchProfile();
-    }
-  }, [handle]);
-
-  async function fetchProfile() {
+    fetchProfiles();
+  }, []);
+  async function fetchProfiles() {
     try {
-      /* fetch the user profile using their handle */
-      const returnedProfile = await client.query({
-        query: getProfiles,
-        variables: { handle },
-      });
-      const profileData = { ...returnedProfile.data.profile };
-      /* format their picture if it is not in the right format */
-      const picture = profileData.picture;
-      if (picture && picture.original && picture.original.url) {
-        if (picture.original.url.startsWith("ipfs://")) {
-          let result = picture.original.url.substring(
-            7,
-            picture.original.url.length
-          );
-          profileData.avatarUrl = `http://lens.infura-ipfs.io/ipfs/${result}`;
-        } else {
-          profileData.avatarUrl = profileData.picture.original.url;
-        }
-      }
-      setProfile(profileData);
-      /* fetch the user's publications from the Lens API and set them in the state */
-      const pubs = await client.query({
-        query: getPublications,
-        variables: {
-          id: profileData.id,
-          limit: 50,
-        },
-      });
-      setPublications(pubs.data.publications.items);
+      /* fetch profiles from Lens API */
+      let response = await client.query({ query: exploreProfiles });
+      /* loop over profiles, create properly formatted ipfs image links */
+      let profileData = await Promise.all(
+        response.data.exploreProfiles.items.map(async (profileInfo) => {
+          let profile = { ...profileInfo };
+          let picture = profile.picture;
+          if (picture && picture.original && picture.original.url) {
+            if (picture.original.url.startsWith("ipfs://")) {
+              let result = picture.original.url.substring(
+                7,
+                picture.original.url.length
+              );
+              profile.avatarUrl = `http://lens.infura-ipfs.io/ipfs/${result}`;
+            } else {
+              profile.avatarUrl = picture.original.url;
+            }
+          }
+          return profile;
+        })
+      );
+
+      /* update the local state with the profiles array */
+      setProfiles(profileData);
     } catch (err) {
-      console.log("error fetching profile...", err);
+      console.log({ err });
     }
   }
-
-  if (!profile) return null;
-
   return (
     <div className="pt-20">
       <div className="flex flex-col justify-center items-center">
-        <img className="w-64 rounded-full" src={profile.avatarUrl} />
-        <p className="text-4xl mt-8 mb-8">{profile.handle}</p>
-        <p className="text-center text-xl font-bold mt-2 mb-2 w-1/2">
-          {profile.bio}
-        </p>
-        {publications.map((pub) => (
-          <div key={pub.id} className="shadow p-10 rounded mb-8 w-2/3">
-            <p>{pub.metadata.content}</p>
+        <h1 className="text-5xl mb-6 font-bold">Hello Lens 🌿</h1>
+        {profiles.map((profile) => (
+          <div
+            key={profile.id}
+            className="w-2/3 shadow-md p-6 rounded-lg mb-8 flex flex-col items-center"
+          >
+            <img
+              className="w-48"
+              src={profile.avatarUrl || "https://picsum.photos/200"}
+            />
+            <p className="text-xl text-center mt-6">{profile.name}</p>
+            <p className="text-base text-gray-400  text-center mt-2">
+              {profile.bio}
+            </p>
+            <Link href={`/profile/${profile.handle}`}>
+              <p className="cursor-pointer text-violet-600 text-lg font-medium text-center mt-2 mb-2">
+                {profile.handle}
+              </p>
+            </Link>
+            <p className="text-pink-600 text-sm font-medium text-center">
+              {profile.stats.totalFollowers} followers
+            </p>
           </div>
         ))}
       </div>
