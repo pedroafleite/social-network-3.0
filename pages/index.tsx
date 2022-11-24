@@ -1,21 +1,74 @@
+/* pages/profile/[handle].js */
 import { useState, useEffect } from "react";
-import { client, recommendProfiles } from "../api";
+import { useRouter } from "next/router";
+import { client, getPublications, getProfiles } from "../api";
 
-export default function Home() {
-  // const [profiles, setProfiles] = useState([]);
+export default function Profile() {
+  /* create initial state to hold user profile and array of publications */
+  const [profile, setProfile] = useState();
+  const [publications, setPublications] = useState([]);
+  /* using the router we can get the lens handle from the route param */
+  const router = useRouter();
+  const { handle } = router.query;
 
   useEffect(() => {
-    fetchProfiles();
-  }, []);
+    if (handle) {
+      fetchProfile();
+    }
+  }, [handle]);
 
-  async function fetchProfiles() {
+  async function fetchProfile() {
     try {
-      const response = await client.query(recommendProfiles).toPromise();
-      console.log({ response });
+      /* fetch the user profile using their handle */
+      const returnedProfile = await client.query({
+        query: getProfiles,
+        variables: { handle },
+      });
+      const profileData = { ...returnedProfile.data.profile };
+      /* format their picture if it is not in the right format */
+      const picture = profileData.picture;
+      if (picture && picture.original && picture.original.url) {
+        if (picture.original.url.startsWith("ipfs://")) {
+          let result = picture.original.url.substring(
+            7,
+            picture.original.url.length
+          );
+          profileData.avatarUrl = `http://lens.infura-ipfs.io/ipfs/${result}`;
+        } else {
+          profileData.avatarUrl = profileData.picture.original.url;
+        }
+      }
+      setProfile(profileData);
+      /* fetch the user's publications from the Lens API and set them in the state */
+      const pubs = await client.query({
+        query: getPublications,
+        variables: {
+          id: profileData.id,
+          limit: 50,
+        },
+      });
+      setPublications(pubs.data.publications.items);
     } catch (err) {
-      console.log("error fetching recommended profiles: ", err);
+      console.log("error fetching profile...", err);
     }
   }
 
-  return <div>Something goes here.</div>;
+  if (!profile) return null;
+
+  return (
+    <div className="pt-20">
+      <div className="flex flex-col justify-center items-center">
+        <img className="w-64 rounded-full" src={profile.avatarUrl} />
+        <p className="text-4xl mt-8 mb-8">{profile.handle}</p>
+        <p className="text-center text-xl font-bold mt-2 mb-2 w-1/2">
+          {profile.bio}
+        </p>
+        {publications.map((pub) => (
+          <div key={pub.id} className="shadow p-10 rounded mb-8 w-2/3">
+            <p>{pub.metadata.content}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
