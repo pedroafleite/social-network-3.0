@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export default function Home() {
   /* create initial state to hold array of profiles */
-  const [profiles, setProfiles] = useState([]);
+  const [profiles, setProfiles] = useState<any>([]);
   useEffect(() => {
     fetchProfiles();
   }, []);
@@ -15,7 +15,7 @@ export default function Home() {
       let response = await client.query({ query: exploreProfiles });
       /* loop over profiles, create properly formatted ipfs image links */
       let profileData = await Promise.all(
-        response.data.exploreProfiles.items.map(async (profileInfo) => {
+        response.data.exploreProfiles.items.map(async (profileInfo: any) => {
           let profile = { ...profileInfo };
           let picture = profile.picture;
           if (picture && picture.original && picture.original.url) {
@@ -43,7 +43,7 @@ export default function Home() {
     <div className="pt-20">
       <div className="flex flex-col justify-center items-center">
         <h1 className="text-5xl mb-6 font-bold">Hello Lens 🌿</h1>
-        {profiles.map((profile) => (
+        {profiles.map((profile: any) => (
           <div
             key={profile.id}
             className="w-2/3 shadow-md p-6 rounded-lg mb-8 flex flex-col items-center"
