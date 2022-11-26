@@ -9,6 +9,23 @@ export const client = new ApolloClient({
 });
 
 /* define a GraphQL query  */
+export const challenge = gql`
+  query Challenge($address: EthereumAddress!) {
+    challenge(request: { address: $address }) {
+      text
+    }
+  }
+`;
+
+export const authenticate = gql`
+  mutation Authenticate($address: EthereumAddress!, $signature: Signature!) {
+    authenticate(request: { address: $address, signature: $signature }) {
+      accessToken
+      refreshToken
+    }
+  }
+`;
+
 export const exploreProfiles = gql`
   query ExploreProfiles {
     exploreProfiles(request: { sortCriteria: MOST_FOLLOWERS }) {
